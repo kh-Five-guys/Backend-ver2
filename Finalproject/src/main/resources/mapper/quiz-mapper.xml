@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.finalproject.mapper.QuizMapper">
+
+    <!-- PrivateChatDTO에 해당하는 resultMap -->
+    <resultMap id="quiz" type="com.finalproject.dto.QuizDTO">
+        <id column="QUESTION_ID" property="questionId"/>
+        <result column="QUESTION_TEXT" property="questionText"/>
+        <result column="CORRECT_ANSWER" property="correctAnswer"/>
+    </resultMap>
+    
+    
+    
+    
+<select id="getRandomQuizzes" resultMap="quiz">
+    <![CDATA[
+        SELECT * 
+        FROM (
+            SELECT QUESTION_ID, QUESTION_TEXT, CORRECT_ANSWER 
+            FROM ox_quiz 
+            ORDER BY DBMS_RANDOM.VALUE
+        )
+        WHERE ROWNUM <= #{quizCnt}
+    ]]>
+</select>
+    
+    
+
+</mapper>

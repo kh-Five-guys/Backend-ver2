@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.finalproject.mapper.FriendMapper">
+
+    <!-- FriendRequestDTO에 해당하는 resultMap -->
+    <resultMap id="friendRequestResultMap" type="com.finalproject.dto.FriendRequestDTO">
+        <id column="REQUEST_ID" property="requestId"/>
+        <result column="SENDER_ID" property="senderId"/>
+        <result column="RECEIVER_ID" property="receiverId"/>
+        <result column="REQUEST_DATE" property="requestDate"/>
+        <result column="STATUS" property="status"/>
+        <result column="USER_PRO_IMG" property="userProImg"/>
+        <result column="USER_NICK" property="userNick"/>
+    </resultMap>
+
+    <!-- FriendDTO에 해당하는 resultMap -->
+    <resultMap id="friendResultMap" type="com.finalproject.dto.FriendDTO">
+        <id column="USER_ID1" property="userId1"/>
+        <id column="USER_ID2" property="userId2"/>
+        <result column="FRIENDSHIP_DATE" property="friendshipDate"/>
+    </resultMap>
+
+    <!-- FriendActivityDTO에 해당하는 resultMap 추가 -->
+    <resultMap id="friendActivityResultMap" type="com.finalproject.dto.FriendActivityDTO">
+        <id column="USER_ID" property="userId"/>
+        <result column="STATUS" property="status"/>
+        <result column="LAST_UPDATE" property="lastUpdate"/>
+    </resultMap>
+
+    <!-- 친구 요청 추가 -->
+    <insert id="insertFriendRequest">
+        INSERT INTO FRIEND_REQUESTS (SENDER_ID, RECEIVER_ID, STATUS, REQUEST_DATE)
+        VALUES (#{senderId}, #{receiverId}, 'PENDING', SYSTIMESTAMP)
+    </insert>
+
+    <!-- 친구 요청 조회 -->
+    
+    
+    
+        <!-- user_pro_img가 clob 데이터라서 문제가 발생함/ 일단 임시로 img를 제거했음 -->
+    <select id="selectFriendRequestsByUser" resultMap="friendRequestResultMap">
+	    SELECT r.REQUEST_ID, r.SENDER_ID, r.RECEIVER_ID, r.REQUEST_DATE, r.STATUS,
+	           u.USER_NICK -- u.USER_PRO_IMG 제거
+	    FROM FRIEND_REQUESTS r
+	    JOIN USERS u ON u.USER_ID = r.SENDER_ID
+	    WHERE r.RECEIVER_ID = #{userId}
+	      AND NOT EXISTS (
+	          SELECT 1 
+	          FROM FRIENDS f
+	          WHERE (f.USER_ID1 = r.SENDER_ID AND f.USER_ID2 = #{userId})
+	             OR (f.USER_ID1 = #{userId} AND f.USER_ID2 = r.SENDER_ID)
+	      )
+	    UNION
+	    SELECT r.REQUEST_ID, r.SENDER_ID, r.RECEIVER_ID, r.REQUEST_DATE, r.STATUS,
+	           u.USER_NICK -- u.USER_PRO_IMG 제거
+	    FROM FRIEND_REQUESTS r
+	    JOIN USERS u ON u.USER_ID = r.RECEIVER_ID
+	    WHERE r.SENDER_ID = #{userId}
+	      AND NOT EXISTS (
+	          SELECT 1 
+	          FROM FRIENDS f
+	          WHERE (f.USER_ID1 = r.SENDER_ID AND f.USER_ID2 = #{userId})
+	             OR (f.USER_ID1 = #{userId} AND f.USER_ID2 = r.SENDER_ID)
+	      )
+	</select>
+    
+    
+<!--     <select id="selectFriendRequestsByUser" resultMap="friendRequestResultMap">
+        SELECT r.REQUEST_ID, r.SENDER_ID, r.RECEIVER_ID, r.REQUEST_DATE, r.STATUS,
+               u.USER_PRO_IMG, u.USER_NICK
+        FROM FRIEND_REQUESTS r
+        JOIN USERS u ON u.USER_ID = r.SENDER_ID
+        WHERE r.RECEIVER_ID = #{userId}
+          AND NOT EXISTS (
+              SELECT 1 
+              FROM FRIENDS f
+              WHERE (f.USER_ID1 = r.SENDER_ID AND f.USER_ID2 = #{userId})
+                 OR (f.USER_ID1 = #{userId} AND f.USER_ID2 = r.SENDER_ID)
+          )
+        UNION
+        SELECT r.REQUEST_ID, r.SENDER_ID, r.RECEIVER_ID, r.REQUEST_DATE, r.STATUS,
+               u.USER_PRO_IMG, u.USER_NICK
+        FROM FRIEND_REQUESTS r
+        JOIN USERS u ON u.USER_ID = r.RECEIVER_ID
+        WHERE r.SENDER_ID = #{userId}
+          AND NOT EXISTS (
+              SELECT 1 
+              FROM FRIENDS f
+              WHERE (f.USER_ID1 = r.SENDER_ID AND f.USER_ID2 = #{userId})
+                 OR (f.USER_ID1 = #{userId} AND f.USER_ID2 = r.SENDER_ID)
+          )
+    </select> -->
+
+    <!-- 보낸 친구 요청 조회 -->
+    <select id="selectSentRequestsByUser" resultMap="friendRequestResultMap">
+        SELECT r.REQUEST_ID, r.SENDER_ID, r.RECEIVER_ID, r.REQUEST_DATE, r.STATUS,
+               u.USER_PRO_IMG, u.USER_NICK
+        FROM FRIEND_REQUESTS r
+        JOIN USERS u ON u.USER_ID = r.RECEIVER_ID
+        WHERE r.SENDER_ID = #{userId}
+          AND r.STATUS = 'PENDING'
+    </select>
+
+    <!-- 친구 추가 -->
+    <insert id="insertFriend">
+        INSERT INTO FRIENDS (USER_ID1, USER_ID2, FRIENDSHIP_DATE, STATUS)
+        VALUES (#{userId}, #{friendId}, SYSTIMESTAMP, 'ONLINE')
+    </insert>
+
+    <!-- 친구 요청 삭제 -->
+    <delete id="deleteFriendRequest">
+        DELETE FROM FRIEND_REQUESTS
+        WHERE (SENDER_ID = #{requesterId} AND RECEIVER_ID = #{userId})
+           OR (SENDER_ID = #{userId} AND RECEIVER_ID = #{requesterId})
+    </delete>
+
+    <!-- 친구 삭제 -->
+    <delete id="deleteFriend">
+        DELETE FROM FRIENDS
+        WHERE (USER_ID1 = #{userId} AND USER_ID2 = #{friendId})
+           OR (USER_ID1 = #{friendId} AND USER_ID2 = #{userId})
+    </delete>
+
+    <!-- 친구 목록 조회 -->
+    <select id="selectFriendsByUser" resultMap="friendResultMap">
+        SELECT f.USER_ID1 AS USER_ID1, f.USER_ID2 AS USER_ID2, f.FRIENDSHIP_DATE AS FRIENDSHIP_DATE
+        FROM FRIENDS f
+        WHERE f.USER_ID1 = #{userId} OR f.USER_ID2 = #{userId}
+    </select>
+
+    <!-- 친구 상태 조회 -->
+    <select id="selectFriendStatusByUser" resultMap="friendActivityResultMap">
+        SELECT fa.USER_ID, fa.STATUS, fa.LAST_UPDATE
+        FROM FRIEND_ACTIVITY fa
+        JOIN FRIENDS f ON (f.USER_ID1 = fa.USER_ID OR f.USER_ID2 = fa.USER_ID)
+        WHERE f.USER_ID1 = #{userId} OR f.USER_ID2 = #{userId}
+    </select>
+</mapper>

@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.finalproject.mapper.BoardMapper">
+
+    <!-- BoardDTO에 해당하는 resultMap -->
+    <resultMap type="com.finalproject.dto.BoardDTO" id="board">
+        <id column="BOARD_NO" property="boardNo"/>
+        <result column="BOARD_TITLE" property="boardTitle"/>
+        <result column="BOARD_CONTENT" property="boardContent"/>
+        <result column="BOARD_COUNT" property="boardCount"/>
+        <result column="BOARD_WRITE_DATE" property="boardWriteDate"/>
+        <result column="BOARD_UPDATE_DATE" property="boardUpdateDate"/>
+        <result column="USER_ID" property="userId"/>
+        <result column="USER_NICK" property="userNick"/>
+        <result column="CATEGORIE_NO" property="categorieNo"/>
+        <result column="CATEGORIE_NAME" property="categorieName"/>
+        <result column="BOARD_LIKE" property="boardLike"/>
+        <result column="BOARD_HATE" property="boardHate"/>
+        <result column="COMMENT_COUNT" property="commentCount"/>
+        <result column="USER_PRO_IMG" property="userProImg"/>
+    </resultMap>
+    
+    
+    
+    
+    <resultMap type="com.finalproject.dto.CommentDTO" id="comment">
+        <id column="COMMENT_NO" property="commentNo"/>
+	    <result column="COMMENT_CONTENT" property="commentContent"/>
+	    <result column="COMMENT_WRITE_DATE" property="commentWriteDate"/>
+	    <result column="USER_ID" property="userId"/>
+	    <result column="BOARD_NO" property="boardNo"/>
+	    <result column="COMMENT_LIKE" property="commentLike"/>
+	    <result column="COMMENT_HATE" property="commentHate"/>
+    </resultMap>
+    
+    
+    <resultMap type="com.finalproject.dto.CategorieDTO" id="categorie">
+        <id column="CATEGORIE_NO" property="categorieNo"/>
+        <result column="CATEGORIE_NAME" property="categorieName"/>
+    </resultMap>
+    
+    
+    <resultMap type="com.finalproject.dto.FileDTO" id="boardFile">
+ 		<result column="FILE_NO" property="fno"/>
+ 		<result column="BOARD_NO" property="bno"/>
+ 		<result column="FILE_URL" property="path"/>
+ 	</resultMap>
+    
+
+    <!-- Sample SQL Queries -->
+    
+    
+    
+    	<!-- 카테고리 -->
+	<select id="selectCategorieList" parameterType="map"
+		resultMap="categorie">
+		SELECT * FROM CATEGORIE
+	</select>
+
+
+
+
+	<!-- 전체 게시글 조회 -->
+<select id="selectBoardList" parameterType="map" resultMap="board">
+    SELECT * FROM (
+        SELECT CEIL(ROW_NUMBER() OVER(ORDER BY
+            <choose>
+                <when test="sortOrder == 'likes'">B.BOARD_LIKE DESC</when>
+                <when test="sortOrder == 'views'">B.BOARD_COUNT DESC</when>
+                <otherwise>B.BOARD_WRITE_DATE DESC</otherwise>
+            </choose>
+        ) / #{pageContentCount}) AS PAGE_NO,
+        B.*
+        FROM BOARD_VIEW B
+        WHERE 1=1
+        <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+            <choose>
+                <when test="searchType == 'title'">AND B.BOARD_TITLE LIKE '%' || #{searchKeyword} || '%'</when>
+                <when test="searchType == 'content'">AND B.BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%'</when>
+                <when test="searchType == 'title_content'">AND (B.BOARD_TITLE LIKE '%' || #{searchKeyword} || '%' OR B.BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%')</when>
+                <when test="searchType == 'nick'">AND B.USER_NICK LIKE '%' || #{searchKeyword} || '%'</when>
+            </choose>
+        </if>
+    ) WHERE PAGE_NO = #{pageNo}
+</select>
+
+<!-- 전체 게시글 수 조회 -->
+<select id="selectBoardTotalCount" parameterType="map" resultType="int">
+    SELECT COUNT(*) FROM BOARD_VIEW
+    WHERE 1=1
+    <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+        <choose>
+            <when test="searchType == 'title'">AND BOARD_TITLE LIKE '%' || #{searchKeyword} || '%'</when>
+            <when test="searchType == 'content'">AND BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%'</when>
+            <when test="searchType == 'title_content'">AND (BOARD_TITLE LIKE '%' || #{searchKeyword} || '%' OR BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%')</when>
+            <when test="searchType == 'nick'">AND USER_NICK LIKE '%' || #{searchKeyword} || '%'</when>
+        </choose>
+    </if>
+</select>
+
+<!-- 카테고리별 게시판 목록 조회 -->
+<select id="selectBoardListByCategory" parameterType="map" resultMap="board">
+    SELECT * FROM (
+        SELECT CEIL(ROW_NUMBER() OVER(ORDER BY
+            <choose>
+                <when test="sortOrder == 'likes'">B.BOARD_LIKE DESC</when>
+                <when test="sortOrder == 'views'">B.BOARD_COUNT DESC</when>
+                <otherwise>B.BOARD_WRITE_DATE DESC</otherwise>
+            </choose>
+        ) / #{pageContentCount}) AS PAGE_NO,
+        B.*
+        FROM BOARD_VIEW B
+        WHERE B.CATEGORIE_NO = #{category}
+        <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+            <choose>
+                <when test="searchType == 'title'">AND B.BOARD_TITLE LIKE '%' || #{searchKeyword} || '%'</when>
+                <when test="searchType == 'content'">AND B.BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%'</when>
+                <when test="searchType == 'title_content'">AND (B.BOARD_TITLE LIKE '%' || #{searchKeyword} || '%' OR B.BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%')</when>
+                <when test="searchType == 'nick'">AND B.USER_NICK LIKE '%' || #{searchKeyword} || '%'</when>
+            </choose>
+        </if>
+    ) WHERE PAGE_NO = #{pageNo}
+</select>
+
+<!-- 카테고리별 게시글 수 조회 -->
+<select id="selectBoardTotalCountByCategory" parameterType="map" resultType="int">
+    SELECT COUNT(*) FROM BOARD_VIEW
+    WHERE CATEGORIE_NO = #{category}
+    <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+        <choose>
+            <when test="searchType == 'title'">AND BOARD_TITLE LIKE '%' || #{searchKeyword} || '%'</when>
+            <when test="searchType == 'content'">AND BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%'</when>
+            <when test="searchType == 'title_content'">AND (BOARD_TITLE LIKE '%' || #{searchKeyword} || '%' OR BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%')</when>
+            <when test="searchType == 'nick'">AND USER_NICK LIKE '%' || #{searchKeyword} || '%'</when>
+        </choose>
+    </if>
+</select>
+
+<!-- 인기글 조회 -->
+<select id="selectPopularBoardList" parameterType="map" resultMap="board">
+    SELECT * FROM (
+        SELECT CEIL(ROW_NUMBER() OVER(ORDER BY
+            <choose>
+                <when test="sortOrder == 'likes'">B.BOARD_LIKE DESC</when>
+                <when test="sortOrder == 'views'">B.BOARD_COUNT DESC</when>
+                <otherwise>B.BOARD_WRITE_DATE DESC</otherwise>
+            </choose>
+        ) / #{pageContentCount}) AS PAGE_NO,
+        B.*
+        FROM BOARD_VIEW B
+        WHERE B.BOARD_LIKE >= #{minLikes}
+        <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+            <choose>
+                <when test="searchType == 'title'">AND B.BOARD_TITLE LIKE '%' || #{searchKeyword} || '%'</when>
+                <when test="searchType == 'content'">AND B.BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%'</when>
+                <when test="searchType == 'title_content'">AND (B.BOARD_TITLE LIKE '%' || #{searchKeyword} || '%' OR B.BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%')</when>
+                <when test="searchType == 'nick'">AND B.USER_NICK LIKE '%' || #{searchKeyword} || '%'</when>
+            </choose>
+        </if>
+    ) WHERE PAGE_NO = #{pageNo}
+</select>
+
+<!-- 인기글 게시글 수 조회 -->
+<select id="selectPopularBoardTotalCount" parameterType="map" resultType="int">
+    SELECT COUNT(*) FROM BOARD_VIEW
+    WHERE BOARD_LIKE >= #{minLikes}
+    <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+        <choose>
+            <when test="searchType == 'title'">AND BOARD_TITLE LIKE '%' || #{searchKeyword} || '%'</when>
+            <when test="searchType == 'content'">AND BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%'</when>
+            <when test="searchType == 'title_content'">AND (BOARD_TITLE LIKE '%' || #{searchKeyword} || '%' OR BOARD_CONTENT LIKE '%' || #{searchKeyword} || '%')</when>
+            <when test="searchType == 'nick'">AND USER_NICK LIKE '%' || #{searchKeyword} || '%'</when>
+        </choose>
+    </if>
+</select>
+
+
+<!-- 메인페이지에서 보여줄 인기글 목록 -->
+<select id="selectMainBoardList" parameterType="map" resultMap="board">
+    SELECT * FROM TOP_100_BOARD_VIEW
+</select>
+
+	
+	
+	<!-- ==================== 게시글 작성 관련 ==================== -->
+	
+	<!-- 게시글 작성 -->
+	<insert id="insertBoard" parameterType="com.finalproject.dto.BoardDTO">
+		insert into board(board_no, board_title, board_content, user_id, categorie_no)
+		values(#{boardNo},#{boardTitle},#{boardContent},#{userId},#{categorieNo})
+	</insert>
+	
+	<!-- 게시글 번호 가져오기 -->
+	<select id="getBoardNo" resultType="int">
+		select board_seq.nextval from dual
+	</select>
+	
+	<!-- 파일넣기 -->
+	<insert id="insertFile" parameterType="boardFile">
+		insert into board_file(file_no, board_no, file_url) 
+		values(#{fno}, #{bno}, #{path})
+	</insert>
+	
+	<!-- 파일 번호 가져오기 -->
+	<select id="getNextFileNo" resultType="int">
+		select board_file_seq.nextval from dual
+	</select>
+	
+	<!-- 게시글에 해당하는 파일 가져오기 -->
+	<select id="selectFileList" parameterType="int" resultMap="boardFile">
+		select file_no, board_no, file_url from board_file where board_no = #{bno}	
+	</select>
+	
+	<select id="selectImageFile" parameterType="int" resultMap="boardFile">
+		select fno, path as FILE_URL from board_view_image where fno = #{fno}
+	</select>
+	
+	<select id="selectFile" parameterType="map" resultMap="boardFile">
+		select file_no, board_no, file_url from board_file 
+		where file_no = #{fno}
+	</select>
+	
+	<!-- 게시글 삭제 -->
+	<delete id="deleteBoard" parameterType="int">
+		delete from board where board_no = #{bno}
+	</delete>
+	
+	
+	<!-- 파일정보 삭제, 없애는 후보임 -->
+	<delete id="deleteFileInfo" parameterType="int">
+		delete from board_file where file_no = #{fno}
+	</delete>
+	
+	
+	<!-- 게시글 업데이트 -->
+	<update id="updateBoard" parameterType="board">
+	    update board 
+	    set board_title = #{boardTitle}, 
+	        board_content = #{boardContent}, 
+	        board_update_date = sysdate
+	    where board_no = #{boardNo}
+	</update>
+	
+	<delete id="deleteBoardFileList" parameterType="map">
+	    DELETE FROM board_file 
+	    WHERE board_no = #{boardNo}
+	    AND file_no IN (
+	        <foreach item="fno" collection="fnoList" separator=",">
+	            #{fno}
+	        </foreach>
+	    )
+	</delete>
+	
+	
+	
+<!-- 	
+	
+	<select id="selectBoardFileList" parameterType="int" resultMap="boardFile">
+		select board_file_no, board_no, board_file_url from board_file where board_no = #{bno}	
+	</select>
+	
+	
+	
+	<update id="updateBoard" parameterType="com.board.dto.BoardDTO">
+		update board set board_title = #{boardTitle}, board_content = #{boardContent}
+		where board_no = #{boardNo}
+	</update>
+	
+	<delete id="deleteBoard" parameterType="int">
+		delete from board where board_no = #{bno}
+	</delete> -->
+	
+	
+	<!-- ==================== 게시글 작성 관련 ==================== -->
+	
+	<!-- 게시글 상세조회 -->
+	<select id="selectBoard" parameterType="int" resultMap="board">
+		select * from board_view where board_no = #{bno}
+	</select>
+	
+	<!-- 게시글 댓글 조회 -->
+	<select id="selectCommentList" parameterType="int" resultMap="comment">
+		SELECT * FROM COMMENT_VIEW 
+		WHERE BOARD_NO = #{bno}
+		ORDER BY COMMENT_NO DESC
+	</select>
+	
+	<!-- 게시글 조회수 증가 -->
+	<update id="updateBoardCount" parameterType="int">
+		update board set board_count = board_count + 1
+		where board_no = #{bno}
+	</update>
+	
+	
+	<!-- 게시글 좋아요/싫어요 -->
+	<insert id="insertBoardLike" parameterType="map">
+    insert into board_like values(#{id},#{bno})
+	</insert>
+	<delete id="deleteBoardLike" parameterType="map">
+	    delete from board_like where user_id = #{id} and board_no = #{bno}
+	</delete>
+	<select id="selectBoardLikeCount" parameterType="int">
+	    select count(*) from board_like where board_no = #{bno}
+	</select>
+	<insert id="insertBoardHate" parameterType="map">
+	    insert into board_hate values(#{id},#{bno})
+	</insert>
+	<delete id="deleteBoardHate" parameterType="map">
+	    delete from board_hate where user_id = #{id} and board_no = #{bno}
+	</delete>
+	<select id="selectBoardHateCount" parameterType="int">
+	    select count(*) from board_hate where board_no = #{bno}
+	</select>
+
+
+	<!-- 댓글 좋아요/싫어요 -->
+    <insert id="insertCommentLike" parameterType="map">
+        insert into comment_like values (#{userId}, #{cno})
+    </insert>
+    <delete id="deleteCommentLike" parameterType="map">
+        delete from comment_like where user_id = #{userId} and comment_no = #{cno}
+    </delete>
+    <select id="selectCommentLikeCount" parameterType="int">
+        select count(*) from comment_like where comment_no = #{cno}
+    </select>
+    <insert id="insertCommentHate" parameterType="map">
+        insert into comment_hate values (#{userId}, #{cno})
+    </insert>
+    <delete id="deleteCommentHate" parameterType="map">
+        delete from comment_hate where user_id = #{userId} and comment_no = #{cno}
+    </delete>
+    <select id="selectCommentHateCount" parameterType="int">
+        select count(*) from comment_hate where comment_no = #{cno}
+    </select>
+	
+	
+	
+	<!-- 댓글 추가 -->	
+	<insert id="insertComment" parameterType="com.finalproject.dto.CommentDTO">
+	    INSERT INTO COMMENTS (COMMENT_NO, BOARD_NO, USER_ID, COMMENT_CONTENT, COMMENT_WRITE_DATE)
+	    VALUES (COMMENT_SEQ.NEXTVAL, #{boardNo}, #{userId}, #{commentContent}, SYSDATE)
+	</insert>
+	
+	
+	<!-- 댓글 삭제 -->
+	<delete id="deleteComment" parameterType="int">
+		DELETE FROM COMMENTS WHERE COMMENT_NO = #{cno}
+	</delete>
+	
+	<!-- ==================== 게시글 관련 ==================== -->
+	
+	
+	
+	
+
+
+	
+    
+</mapper>
+
+
+
